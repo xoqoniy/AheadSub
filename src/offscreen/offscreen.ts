@@ -32,6 +32,7 @@ interface TabPipelineState {
 
 const activePipelines = new Map<number, TabPipelineState>();
 const pendingChunks = new Map<number, (res: TranscriptionResultPayload) => void>();
+const tabLanguages = new Map<number, string>();
 
 function sendToTabViaBackground(tabId: number, message: any): void {
   chrome.runtime.sendMessage({
@@ -90,6 +91,7 @@ async function handleMessage(
       case 'OFFSCREEN_PROCESS_LIVE_CHUNK' as any: {
         const p = message.payload as any;
         const targetTabId = p.tabId || lastRequestedTabId || Array.from(activePipelines.keys())[0] || 0;
+        const liveLanguage = tabLanguages.get(targetTabId) || tabLanguages.get(lastRequestedTabId) || 'auto';
         
         if (p.pcmData && p.pcmData.length > 0) {
           const pcm = new Float32Array(p.pcmData);
@@ -98,7 +100,7 @@ async function handleMessage(
               pcm,
               p.chunkIndex,
               p.startTime,
-              'auto'
+              liveLanguage
             );
 
             // Forward transcription result tagged with targetTabId
@@ -173,7 +175,10 @@ async function handleLoadModel(payload: {
   tabId?: number;
 }): Promise<void> {
   lastRequestedTabId = payload.tabId ?? 0;
-  console.log(`[AheadSub Offscreen] Loading model: ${payload.modelId} (Tab: ${lastRequestedTabId})`);
+  if (payload.language) {
+    tabLanguages.set(lastRequestedTabId, payload.language);
+  }
+  console.log(`[AheadSub Offscreen] Loading model: ${payload.modelId} (Tab: ${lastRequestedTabId}, Lang: ${payload.language})`);
 
   // Notify background that model is loading
   chrome.runtime.sendMessage({
@@ -227,6 +232,10 @@ async function handleStartOffscreenPipeline(payload: {
   activePipelines.set(tabId, pipelineState);
 
   const { videoInfo, settings } = payload;
+  if (settings.spokenLanguage) {
+    tabLanguages.set(tabId, settings.spokenLanguage);
+  }
+
   let totalDuration = (videoInfo.duration && isFinite(videoInfo.duration)) ? videoInfo.duration : 0;
   const allCues: SubtitleCue[] = [];
   let processedDuration = 0;
@@ -255,7 +264,7 @@ async function handleStartOffscreenPipeline(payload: {
     );
 
     try {
-      // Resolve language: check explicit setting or detect from title/URL context
+      // Resolve language: check explicit setting or detect from Cyrillic context
       // Use local resolvedLanguage — never mutate shared settings object
       let targetLanguage = resolvedLanguage;
       if (!targetLanguage || targetLanguage === 'auto') {
@@ -263,8 +272,6 @@ async function handleStartOffscreenPipeline(payload: {
         const hasCyrillic = /[а-яА-ЯёЁ]/.test(titleText);
         if (hasCyrillic) {
           targetLanguage = 'ru';
-        } else if (/\b(dub|english|eng|sub|ep|episode|season)\b/i.test(titleText) || /^[a-zA-Z0-9\s\-:.,!?']+$/.test(videoInfo.title || '')) {
-          targetLanguage = 'en';
         } else {
           targetLanguage = 'auto';
         }

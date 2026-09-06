@@ -922,23 +922,39 @@ export class SubtitleOverlay {
     }
   }
 
+  private stripNoiseAnnotations(text: string): string {
+    if (!text) return '';
+    let clean = text.replace(/[\(\[\{]\s*(BLANK_AUDIO|MUSIC|SILENCE|NOISE|LAUGHTER|APPLAUSE|SOBBING|COUGHING|SOUND|TAG|UNK|SPEAKING_FOREIGN|BLANK|AUDIO|NO_SPEECH)\s*[\)\]\}]/gi, '');
+    clean = clean.replace(/[\(\[\{][^\)\]\}]*?(BLANK|AUDIO|MUSIC|SILENCE|NOISE|SOUND|SIGH|LAUGHT|COUGH|CHUCKLE|SOB|GASP)[^\)\]\}]*?[\)\]\}]/gi, '');
+    return clean.replace(/\s+/g, ' ').trim();
+  }
+
   // --- Cue & Word Tokenizer Rendering ---
 
   private async updateCueDisplay(cue: SubtitleCue): Promise<void> {
+    const cleanCueText = this.stripNoiseAnnotations(cue.text);
+    if (!cleanCueText) {
+      if (this.primaryTextSpan) this.primaryTextSpan.innerHTML = '';
+      if (this.textElement) this.textElement.textContent = '';
+      if (this.dualElement) this.dualElement.style.display = 'none';
+      if (this.translationTooltip) this.translationTooltip.style.display = 'none';
+      return;
+    }
+
     if (!this.primaryTextSpan) {
-      if (this.textElement) this.textElement.textContent = cue.text;
+      if (this.textElement) this.textElement.textContent = cleanCueText;
       return;
     }
 
     // Tokenize words & collocations for interactive learner dictionary
-    this.renderWordTokens(cue.text);
+    this.renderWordTokens(cleanCueText);
 
     const translateEnabled = this.settings.hoverTranslationEnabled !== false;
     const targetLang = this.settings.hoverTranslationLanguage || 'uz';
 
     if (translateEnabled) {
       // Immediate local prefetch for this cue's words
-      const words = cue.text.match(/[а-яА-ЯёЁa-zA-Z0-9]+(?:-[а-яА-ЯёЁa-zA-Z0-9]+)?/gu) || [];
+      const words = cleanCueText.match(/[а-яА-ЯёЁa-zA-Z0-9]+(?:-[а-яА-ЯёЁa-zA-Z0-9]+)?/gu) || [];
       for (const w of words) {
         const clean = cleanToken(w);
         if (clean.length > 1) {
@@ -946,13 +962,13 @@ export class SubtitleOverlay {
         }
       }
 
-      const sKey = `${targetLang}:${cue.text.trim()}`;
+      const sKey = `${targetLang}:${cleanCueText.trim()}`;
       const isDualActive = this.isSentenceExpanded || this.settings.translationDisplayMode === 'dual';
 
       // Frame 0 synchronous render from cache (0ms latency!)
       if (this.translationCache.has(sKey)) {
         const cached = this.translationCache.get(sKey)!;
-        if (cached && cached.trim().toLowerCase() !== cue.text.trim().toLowerCase()) {
+        if (cached && cached.trim().toLowerCase() !== cleanCueText.trim().toLowerCase()) {
           if (this.dualElement) {
             this.dualElement.textContent = cached;
             this.updateSentenceToggleDisplay();
@@ -974,8 +990,8 @@ export class SubtitleOverlay {
           this.updateSentenceToggleDisplay();
         }
         // Fetch and update
-        this.requestTranslation(cue.text, targetLang).then((translated) => {
-          if ((!this.activeCue || this.activeCue.text === cue.text) && translated && translated.trim().toLowerCase() !== cue.text.trim().toLowerCase()) {
+        this.requestTranslation(cleanCueText, targetLang).then((translated) => {
+          if ((!this.activeCue || this.stripNoiseAnnotations(this.activeCue.text) === cleanCueText) && translated && translated.trim().toLowerCase() !== cleanCueText.trim().toLowerCase()) {
             if (this.dualElement) {
               this.dualElement.textContent = translated;
               this.updateSentenceToggleDisplay();

@@ -1543,13 +1543,42 @@ chrome.storage.local.get('settings', (data) => {
   }
 });
 
-// --- Extension Icon Click ---
+// --- Active Tab Listeners ---
 
-chrome.action.onClicked.addListener(async (tab) => {
-  // Popup handles this, but just in case
-  if (tab.id) {
-    state.activeTabId = tab.id;
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  state.activeTabId = activeInfo.tabId;
+  const session = tabSessions.get(activeInfo.tabId);
+  if (session) {
+    state.videoInfo = session.videoInfo;
+    state.activeFrameId = session.activeFrameId;
+    state.cues = session.cues;
+    state.progress = session.progress;
+  } else {
+    state.videoInfo = null;
+    state.activeFrameId = null;
+    state.cues = [];
+    state.progress = {
+      state: PipelineState.IDLE,
+      mode: state.settings.processingMode,
+      processedDuration: 0,
+      totalDuration: 0,
+      currentChunkStart: 0,
+      currentChunkEnd: 0,
+      cuesGenerated: 0,
+      safePlaybackThrough: 0,
+    };
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  tabSessions.delete(tabId);
+  if (state.activeTabId === tabId) {
+    state.activeTabId = null;
+    state.videoInfo = null;
+    state.activeFrameId = null;
+    state.cues = [];
   }
 });
 
 console.log('[AheadSub] Background service worker started');
+

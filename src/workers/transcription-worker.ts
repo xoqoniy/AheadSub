@@ -202,9 +202,33 @@ async function transcribe(payload: {
   // Convert ArrayBuffer to Float32Array
   const audioFloat32 = new Float32Array(audioData);
 
-  // If explicit language is provided and not 'auto', pass it.
-  // If 'auto' or unspecified, omit language so Whisper's multilingual model automatically detects the spoken language.
-  const explicitLang = (language && language !== 'auto') ? language : undefined;
+  // Map 2-letter ISO codes to Transformers.js / Whisper language names
+  const WHISPER_LANG_NAMES: Record<string, string> = {
+    en: 'english',
+    ru: 'russian',
+    uz: 'uzbek',
+    ja: 'japanese',
+    ko: 'korean',
+    zh: 'chinese',
+    de: 'german',
+    fr: 'french',
+    es: 'spanish',
+    pt: 'portuguese',
+    it: 'italian',
+    ar: 'arabic',
+    hi: 'hindi',
+    uk: 'ukrainian',
+    pl: 'polish',
+    tr: 'turkish',
+    nl: 'dutch',
+    sv: 'swedish',
+    cs: 'czech',
+    th: 'thai',
+  };
+
+  // If explicit language is provided and not 'auto', resolve full language name
+  const rawLang = (language && language !== 'auto') ? language.toLowerCase() : undefined;
+  const explicitLang = rawLang ? (WHISPER_LANG_NAMES[rawLang] || rawLang) : undefined;
 
   // Run transcription with native segment timestamps
   const options: any = {
@@ -216,6 +240,10 @@ async function transcribe(payload: {
 
   if (explicitLang) {
     options.language = explicitLang;
+    options.generate_kwargs = {
+      language: explicitLang,
+      task: 'transcribe',
+    };
   }
 
   const result = await transcriber(audioFloat32, options);
@@ -244,6 +272,19 @@ interface WhisperChunk {
   timestamp: [number, number] | null;
 }
 
+function stripNoiseAnnotations(text: string): string {
+  if (!text) return '';
+  let clean = text.replace(/[\(\[\{]\s*(BLANK_AUDIO|MUSIC|SILENCE|NOISE|LAUGHTER|APPLAUSE|SOBBING|COUGHING|SOUND|TAG|UNK|SPEAKING_FOREIGN|BLANK|AUDIO|NO_SPEECH)\s*[\)\]\}]/gi, '');
+  clean = clean.replace(/[\(\[\{][^\)\]\}]*?(BLANK|AUDIO|MUSIC|SILENCE|NOISE|SOUND|SIGH|LAUGHT|COUGH|CHUCKLE|SOB|GASP)[^\)\]\}]*?[\)\]\}]/gi, '');
+  return clean.replace(/\s+/g, ' ').trim();
+}
+
+function isNoiseOrBlankText(text: string): boolean {
+  if (!text || !text.trim()) return true;
+  const clean = stripNoiseAnnotations(text);
+  return clean.length === 0;
+}
+
 function buildCuesFromWhisperOutput(
   result: any,
   chunkStartTime: number
@@ -253,13 +294,16 @@ function buildCuesFromWhisperOutput(
   if (!result.chunks || result.chunks.length === 0) {
     // Fallback: single cue from full text
     if (result.text && result.text.trim()) {
-      cues.push({
-        id: `cue-${chunkStartTime}-0`,
-        startTime: chunkStartTime,
-        endTime: chunkStartTime + 5,
-        text: formatCueText(result.text.trim(), 42),
-        words: [],
-      });
+      const cleanFullText = stripNoiseAnnotations(result.text.trim());
+      if (cleanFullText && !isNoiseOrBlankText(cleanFullText)) {
+        cues.push({
+          id: `cue-${chunkStartTime}-0`,
+          startTime: chunkStartTime,
+          endTime: chunkStartTime + 5,
+          text: formatCueText(cleanFullText, 42),
+          words: [],
+        });
+      }
     }
     return cues;
   }
@@ -273,8 +317,11 @@ function buildCuesFromWhisperOutput(
 
   for (let i = 0; i < result.chunks.length; i++) {
     const chunk = result.chunks[i];
-    const text = chunk.text?.trim();
-    if (!text) continue;
+    let rawChunkText = chunk.text?.trim();
+    if (!rawChunkText || isNoiseOrBlankText(rawChunkText)) continue;
+
+    const text = stripNoiseAnnotations(rawChunkText);
+    if (!text || isNoiseOrBlankText(text)) continue;
 
     // Handle timestamps safely — never drop text due to null timestamps
     let [rawStart, rawEnd] = chunk.timestamp || [null, null];
@@ -346,6 +393,10 @@ function splitLongText(text: string, maxLen: number): string[] {
 }
 
 function formatCueText(text: string, maxChars: number): string {
+  if (!text) return '';
+
+  // 0. Strip noise annotations like [BLANK_AUDIO] or (music)
+  text = stripNoiseAnnotations(text);
   if (!text) return '';
 
   // 1. Normalize spaces
