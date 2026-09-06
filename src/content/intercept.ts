@@ -130,6 +130,43 @@
   window.addEventListener('load', () => setTimeout(inspectYouTube, 1000));
   setInterval(inspectYouTube, 3500);
 
+  function convertYouTubeXmlToVtt(xml: string): string {
+    let vtt = 'WEBVTT\n\n';
+    const regex = /<text\s+start="([\d.]+)"(?:\s+dur="([\d.]+)")?[^>]*>([\s\S]*?)<\/text>/gi;
+    let match: RegExpExecArray | null;
+    let count = 1;
+
+    while ((match = regex.exec(xml)) !== null) {
+      const startSec = parseFloat(match[1] || '0');
+      const durSec = parseFloat(match[2] || '3');
+      const endSec = startSec + durSec;
+
+      let text = match[3] || '';
+      text = text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/<[^>]+>/g, '')
+        .trim();
+
+      if (!text) continue;
+
+      const formatTime = (sec: number) => {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = Math.floor(sec % 60);
+        const ms = Math.round((sec % 1) * 1000);
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+      };
+
+      vtt += `${count++}\n${formatTime(startSec)} --> ${formatTime(endSec)}\n${text}\n\n`;
+    }
+
+    return vtt;
+  }
+
   // Allow isolated world to trigger native caption fetch inside YouTube origin
   window.addEventListener('message', async (event) => {
     if (event.data?.type === 'AHEADSUB_REQUEST_YOUTUBE_CAPTIONS') {
@@ -145,18 +182,27 @@
                     tracks[0];
 
         if (track && track.baseUrl) {
-          let fetchUrl = track.baseUrl + '&fmt=vtt';
-          if (targetLang && track.isTranslatable) {
+          let fetchUrl = track.baseUrl;
+          if (!fetchUrl.includes('&fmt=')) {
+            fetchUrl += '&fmt=vtt';
+          }
+          if (targetLang && track.isTranslatable && !fetchUrl.includes('&tlang=')) {
             fetchUrl += `&tlang=${encodeURIComponent(targetLang)}`;
           }
           const res = await fetch(fetchUrl, { credentials: 'include' });
           if (res.ok) {
-            const vtt = await res.text();
-            if (vtt && vtt.includes('WEBVTT')) {
+            const rawText = await res.text();
+            let vttContent = '';
+            if (rawText && rawText.includes('WEBVTT')) {
+              vttContent = rawText;
+            } else if (rawText && rawText.includes('<text')) {
+              vttContent = convertYouTubeXmlToVtt(rawText);
+            }
+            if (vttContent) {
               window.postMessage({
                 type: 'AHEADSUB_YOUTUBE_CAPTIONS_RESULT',
                 success: true,
-                vtt,
+                vtt: vttContent,
                 lang: targetLang || track.languageCode
               }, '*');
               return;

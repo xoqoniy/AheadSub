@@ -425,14 +425,12 @@ async function handleMessage(
         const tabId = sender.tab?.id;
         if (tabId && tabSessions.has(tabId)) {
           const session = tabSessions.get(tabId)!;
-          if (sender.frameId === session.activeFrameId || session.activeFrameId === 0) {
+          // Only clear if the registered video element is actually disconnected from the page
+          const el = session.videoInfo?.videoElement as any;
+          if (el && typeof el === 'object' && 'isConnected' in el && !el.isConnected) {
+            console.log(`[AheadSub BG] Video disconnected from DOM in tab ${tabId}`);
             session.videoInfo = null;
           }
-        }
-        if (sender.frameId === state.activeFrameId || state.activeFrameId === null) {
-          console.log(`[AheadSub BG] Video lost from frame ${sender.frameId}`);
-          state.videoInfo = null;
-          state.activeFrameId = null;
         }
         sendResponse({ success: true });
         break;
