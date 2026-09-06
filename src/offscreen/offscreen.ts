@@ -583,7 +583,7 @@ function handleWorkerMessage(event: MessageEvent): void {
     case 'model_progress':
       chrome.runtime.sendMessage({
         type: MessageType.OFFSCREEN_MODEL_PROGRESS,
-        payload,
+        payload: { ...payload, tabId: lastRequestedTabId },
       });
       break;
 

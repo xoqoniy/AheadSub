@@ -113,6 +113,8 @@ async function loadModel(payload: {
     payload: { status: 'downloading', modelId, device },
   });
 
+  const fileProgress = new Map<string, number>();
+
   // Create the ASR pipeline
   transcriber = await createPipeline(
     'automatic-speech-recognition',
@@ -121,11 +123,31 @@ async function loadModel(payload: {
       device,
       dtype: device === 'webgpu' ? 'fp32' : 'q8',
       progress_callback: (progress: any) => {
+        const fileKey = progress.file || 'model';
+        let filePct = 0;
+        if (progress.status === 'done') {
+          filePct = 100;
+        } else if (typeof progress.progress === 'number' && progress.progress > 0) {
+          filePct = progress.progress <= 1 ? progress.progress * 100 : progress.progress;
+        } else if (progress.total && progress.loaded) {
+          filePct = Math.min(100, (progress.loaded / progress.total) * 100);
+        }
+        fileProgress.set(fileKey, filePct);
+
+        // Compute overall progress across tracked files
+        let sum = 0;
+        let count = 0;
+        for (const p of fileProgress.values()) {
+          sum += p;
+          count++;
+        }
+        const overallProgress = count > 0 ? Math.round(sum / count) : 0;
+
         self.postMessage({
           type: 'model_progress',
           payload: {
             status: progress.status,
-            progress: progress.progress || 0,
+            progress: overallProgress,
             file: progress.file,
             loaded: progress.loaded,
             total: progress.total,
