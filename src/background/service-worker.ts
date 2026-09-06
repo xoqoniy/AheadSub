@@ -1112,14 +1112,24 @@ async function handleTranslateText(
 
       if (typeof data === 'string') {
         translated = data;
-      } else if (Array.isArray(data?.[0])) {
-        for (const item of data[0]) {
-          if (item && typeof item[0] === 'string') {
-            translated += item[0];
+      } else if (Array.isArray(data)) {
+        if (typeof data[0] === 'string') {
+          translated = data[0];
+        } else if (Array.isArray(data[0])) {
+          // clients5 dict-chrome-ex returns [ ["translated text", "ru"] ]
+          if (typeof data[0][0] === 'string' && (data[0].length === 1 || (data[0].length === 2 && typeof data[0][1] === 'string' && data[0][1].length <= 5))) {
+            translated = data[0][0];
+          } else {
+            // dt=t chunked format: [ [ ["chunk1", "orig1"], ["chunk2", "orig2"] ] ]
+            for (const item of data[0]) {
+              if (Array.isArray(item) && typeof item[0] === 'string') {
+                translated += item[0];
+              } else if (typeof item === 'string') {
+                translated += item;
+              }
+            }
           }
         }
-      } else if (Array.isArray(data) && typeof data[0] === 'string') {
-        translated = data[0];
       }
 
       const dictEntries: Array<{ pos: string; terms: string[]; base?: string }> = [];

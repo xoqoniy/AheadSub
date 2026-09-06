@@ -572,12 +572,12 @@ export class SubtitleOverlay {
     const position = this.settings.subtitlePosition || 'bottom';
 
     // Container styles — use height: 0 with overflow visible so the pill
-    // sits exactly at the subtitle position without covering player controls
+    // sits cleanly above player controls
     Object.assign(this.container.style, {
       position: 'absolute',
       left: '0',
       right: '0',
-      [position]: '8%',
+      [position]: position === 'bottom' ? '12%' : '8%',
       [position === 'bottom' ? 'top' : 'bottom']: 'auto',
       height: '0',
       overflow: 'visible',
@@ -628,6 +628,8 @@ export class SubtitleOverlay {
       userSelect: 'none',
       position: 'relative',
       pointerEvents: 'auto',
+      transform: position === 'bottom' ? 'translateY(-100%)' : 'none',
+      transformOrigin: 'bottom center',
     });
 
     if (this.primaryRowElement) {
