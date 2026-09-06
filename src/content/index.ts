@@ -66,9 +66,14 @@ class AheadSubContent {
 
     this.currentMediaInfo = info;
 
-    if (info.videoElement && !this.activeVideo) {
-      this.activeVideo = info.videoElement;
-      this.sync.attach(info.videoElement);
+    const newVideo = info.videoElement;
+    if (newVideo && (this.activeVideo !== newVideo || !this.activeVideo?.isConnected)) {
+      console.log('[AheadSub] Attaching to new active video element:', newVideo);
+      this.activeVideo = newVideo;
+      this.sync.attach(newVideo);
+      if (this.overlay.getCueCount() > 0 || this.overlay.isAttached()) {
+        this.overlay.attach(newVideo);
+      }
     }
 
     // Send video info immediately to background so it's always up to date

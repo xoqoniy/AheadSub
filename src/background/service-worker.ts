@@ -191,27 +191,44 @@ try {
   console.warn('[AheadSub BG] webRequest setup error:', e);
 }
 
-// Reset tab state when user navigates or reloads active tab
+// Reset tab state when user navigates away to a different domain/site
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading' && changeInfo.url) {
-    console.log(`[AheadSub BG] Tab ${tabId} navigating to ${changeInfo.url}. Resetting tab state.`);
-    tabSessions.delete(tabId);
-    if (state.activeTabId === tabId) {
-      state.videoInfo = null;
-      state.activeFrameId = null;
-      state.recentManifestUrl = null;
-      state.cues = [];
-      state.progress = {
-        state: PipelineState.IDLE,
-        mode: state.settings.processingMode,
-        processedDuration: 0,
-        totalDuration: 0,
-        currentChunkStart: 0,
-        currentChunkEnd: 0,
-        cuesGenerated: 0,
-        safePlaybackThrough: 0,
-      };
-      chrome.runtime.sendMessage({ type: MessageType.STOP_OFFSCREEN_PIPELINE }).catch(() => {});
+    const session = tabSessions.get(tabId);
+    let shouldReset = false;
+    try {
+      if (session?.videoInfo?.pageUrl) {
+        const oldUrl = new URL(session.videoInfo.pageUrl);
+        const newUrl = new URL(changeInfo.url);
+        // Only reset if domain/hostname changed
+        if (oldUrl.hostname !== newUrl.hostname) {
+          shouldReset = true;
+        }
+      }
+    } catch {
+      // If URL parsing fails, preserve state
+    }
+
+    if (shouldReset) {
+      console.log(`[AheadSub BG] Tab ${tabId} navigated to new domain ${changeInfo.url}. Resetting tab state.`);
+      tabSessions.delete(tabId);
+      if (state.activeTabId === tabId) {
+        state.videoInfo = null;
+        state.activeFrameId = null;
+        state.recentManifestUrl = null;
+        state.cues = [];
+        state.progress = {
+          state: PipelineState.IDLE,
+          mode: state.settings.processingMode,
+          processedDuration: 0,
+          totalDuration: 0,
+          currentChunkStart: 0,
+          currentChunkEnd: 0,
+          cuesGenerated: 0,
+          safePlaybackThrough: 0,
+        };
+        chrome.runtime.sendMessage({ type: MessageType.STOP_OFFSCREEN_PIPELINE }).catch(() => {});
+      }
     }
   }
 });

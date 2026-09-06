@@ -259,8 +259,13 @@ export class MediaDetector {
     const currentSrc = video.currentSrc || video.src || video.querySelector('source')?.src || video.querySelector('source')?.getAttribute('src') || '';
     const existing = this.detectedVideos.get(video);
     if (existing) {
-      // Check if source or duration changed (e.g. Next Episode clicked, or metadata loaded)
-      if ((currentSrc && currentSrc !== existing.sourceUrl) || ((video.duration || 0) > 0 && !existing.duration)) {
+      const isPlaying = !video.paused && !video.ended;
+      // Refresh media info if source, duration, or playing state changed
+      if (
+        (currentSrc && currentSrc !== existing.sourceUrl) ||
+        ((video.duration || 0) > 0 && !existing.duration) ||
+        (isPlaying !== existing.isPlaying)
+      ) {
         const updated = this.refreshMediaInfo(video, { ...existing, sourceUrl: currentSrc || existing.sourceUrl, duration: video.duration || existing.duration });
         this.detectedVideos.set(video, updated);
         this.onVideoFound?.(updated);
