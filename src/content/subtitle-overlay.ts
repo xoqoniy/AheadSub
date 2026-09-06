@@ -178,13 +178,38 @@ export class SubtitleOverlay {
         }
       }
 
-      // Also suppress <track> elements rendered by the site player via CSS
+      // Suppress <track> elements rendered by the site player
       video.querySelectorAll('track').forEach((t) => {
         (t as any).__aheadsub_kind = t.getAttribute('kind');
-        t.setAttribute('kind', 'metadata'); // Makes browser ignore as subtitle
+        t.setAttribute('kind', 'metadata');
       });
 
-      // Watch for dynamically added tracks (some players add them after load)
+      // Inject strict global CSS to hide all site-native caption elements (YouTube, JWPlayer, VideoJS, etc.)
+      let hideStyle = document.getElementById('aheadsub-hide-native-css') as HTMLStyleElement | null;
+      if (!hideStyle) {
+        hideStyle = document.createElement('style');
+        hideStyle.id = 'aheadsub-hide-native-css';
+        hideStyle.textContent = `
+          .ytp-caption-window-container,
+          .ytp-caption-window,
+          .caption-window,
+          .ytp-caption-segment,
+          .jw-captions,
+          .jw-text-track-container,
+          .vjs-text-track-display,
+          .plyr__captions,
+          .dplayer-subtitles,
+          video::cue,
+          video::-webkit-media-text-track-container {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+          }
+        `;
+        (document.head || document.documentElement).appendChild(hideStyle);
+      }
+
+      // Watch for dynamically added tracks
       const observer = new MutationObserver(() => {
         const tl = video.textTracks;
         for (let i = 0; i < tl.length; i++) {
@@ -200,10 +225,9 @@ export class SubtitleOverlay {
       });
 
       observer.observe(video, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
-      // Store observer for cleanup (reuse suppressedTracksData metadata slot)
       (video as any).__aheadsub_track_observer = observer;
     } catch (e) {
-      // Best-effort: some cross-origin iframes may throw on textTracks access
+      // Best-effort
     }
   }
 
@@ -212,12 +236,14 @@ export class SubtitleOverlay {
    */
   private restoreNativeSubtitles(): void {
     try {
+      const hideStyle = document.getElementById('aheadsub-hide-native-css');
+      hideStyle?.remove();
+
       for (const { track, originalMode } of this.suppressedTracksData) {
         try { track.mode = originalMode; } catch {}
       }
       this.suppressedTracksData = [];
 
-      // Restore <track> element kind attributes
       if (this.video) {
         this.video.querySelectorAll('track[__aheadsub_kind]').forEach((t) => {
           const orig = (t as any).__aheadsub_kind;
@@ -231,7 +257,7 @@ export class SubtitleOverlay {
           delete (this.video as any).__aheadsub_track_observer;
         }
       }
-    } catch {}
+    } catch (e) {}
   }
 
   // --- Private Overlay Creation ---
