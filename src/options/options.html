@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AheadSub — Options</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <h1>AheadSub Settings</h1>
+
+    <section class="option-group">
+      <h2>Subtitle Appearance</h2>
+      <div class="option-row">
+        <label for="fontSize">Font Size:</label>
+        <input type="range" id="fontSize" min="16" max="48" value="28">
+        <span id="fontSizeValue">28px</span>
+      </div>
+      <div class="option-row">
+        <label for="fontColor">Font Color:</label>
+        <input type="color" id="fontColor" value="#FFFFFF">
+      </div>
+      <div class="option-row">
+        <label for="outlineColor">Outline Color:</label>
+        <input type="color" id="outlineColor" value="#000000">
+      </div>
+      <div class="option-row">
+        <label for="outlineWidth">Outline Width:</label>
+        <input type="range" id="outlineWidth" min="0" max="5" value="2">
+        <span id="outlineWidthValue">2px</span>
+      </div>
+      <div class="option-row">
+        <label for="subtitlePosition">Position:</label>
+        <select id="subtitlePosition">
+          <option value="bottom">Bottom</option>
+          <option value="top">Top</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <label for="maxCharsPerLine">Max Characters/Line:</label>
+        <input type="number" id="maxCharsPerLine" min="20" max="80" value="42">
+      </div>
+      <div class="option-row">
+        <label for="maxLines">Max Lines:</label>
+        <select id="maxLines">
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="option-group">
+      <h2>Processing</h2>
+      <div class="option-row">
+        <label for="aheadBuffer">Ahead Buffer (seconds):</label>
+        <input type="number" id="aheadBuffer" min="10" max="300" value="45">
+      </div>
+      <div class="option-row">
+        <label>
+          <input type="checkbox" id="useWebGPU" checked>
+          Use WebGPU acceleration (when available)
+        </label>
+      </div>
+    </section>
+
+    <section class="option-group">
+      <h2>Translation</h2>
+      <div class="option-row">
+        <label for="translationMode">Translation Mode:</label>
+        <select id="translationMode">
+          <option value="local">Local (OPUS-MT models)</option>
+          <option value="cloud">Cloud API</option>
+          <option value="none">None (transcription only)</option>
+        </select>
+      </div>
+      <div class="option-row cloud-option" style="display: none;">
+        <label for="cloudProvider">Cloud Provider:</label>
+        <select id="cloudProvider">
+          <option value="google">Google Translate</option>
+          <option value="deepl">DeepL</option>
+        </select>
+      </div>
+      <div class="option-row cloud-option" style="display: none;">
+        <label for="cloudApiKey">API Key:</label>
+        <input type="password" id="cloudApiKey" placeholder="Enter API key">
+      </div>
+    </section>
+
+    <section class="option-group">
+      <h2>Cache</h2>
+      <div id="cacheInfo">Loading...</div>
+      <button id="clearAllCache" class="btn btn-danger">Clear All Cached Subtitles</button>
+    </section>
+
+    <section class="option-group">
+      <h2>Hardware</h2>
+      <div id="hardwareInfo">Detecting...</div>
+    </section>
+
+    <div class="actions">
+      <button id="saveBtn" class="btn btn-primary">Save Settings</button>
+      <button id="resetBtn" class="btn btn-outline">Reset to Defaults</button>
+    </div>
+  </div>
+
+  <script type="module" src="options.ts"></script>
+</body>
+</html>

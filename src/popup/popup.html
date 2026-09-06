@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=440, initial-scale=1.0">
+  <title>AheadSub</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect width="24" height="24" rx="6" fill="url(#grad)"/>
+          <path d="M6 16h12M6 12h8M8 8h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="grad" x1="0" y1="0" x2="24" y2="24">
+              <stop offset="0%" stop-color="#6C5CE7"/>
+              <stop offset="100%" stop-color="#a855f7"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="logo-text">AheadSub</span>
+      </div>
+      <span class="version">v1.0</span>
+    </header>
+
+    <!-- Video Status -->
+    <section class="section video-status" id="videoStatus">
+      <div class="video-status-header">
+        <div class="status-indicator" id="statusIndicator">
+          <span class="dot dot-searching"></span>
+          <span id="statusText">Video qidirilmoqda...</span>
+        </div>
+        <button class="btn btn-xs btn-outline" id="resetEpisodeBtn" title="Qayta skanerlash va yangi qismni aniqlash">🔄 Yangi qism</button>
+      </div>
+      <div class="video-info" id="videoInfo" style="display: none;">
+        <div class="info-row">
+          <span class="info-label">Nomi:</span>
+          <span class="info-value" id="videoTitle">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Davomiyligi:</span>
+          <span class="info-value" id="videoDuration">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Audio manbasi:</span>
+          <span class="info-value" id="audioAccess">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="section settings" id="settingsSection">
+      <div class="setting-row">
+        <label for="spokenLang">Video tili (Nutq):</label>
+        <select id="spokenLang" class="select"></select>
+      </div>
+      <div class="setting-row">
+        <label for="subtitleLang">Subtitr tili:</label>
+        <select id="subtitleLang" class="select"></select>
+      </div>
+      <div class="setting-row">
+        <label>Rejim:</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="mode" value="full" checked>
+            <span>Oldindan yaratish</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="mode" value="buffer">
+            <span>Buferlash rejimi</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="mode" value="realtime">
+            <span>Jonli rejim</span>
+          </label>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label for="modelSize">Sun'iy intellekt modeli:</label>
+        <select id="modelSize" class="select">
+          <option value="tiny">Tiny (juda tez, asosiy so'zlar, ~40MB)</option>
+          <option value="base">Base (muvozanatli, ~75MB)</option>
+          <option value="small" selected>Small (tavsiya etiladi, ismlar va yuqori aniqlik, ~250MB)</option>
+          <option value="medium">Medium (eng yuqori aniqlik, ismlar va joy nomlari, ~780MB)</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Translation / Bilingual Hover Feature -->
+    <section class="section translation-section" id="translationSection">
+      <div class="section-header">
+        <div class="section-title">
+          <span>🌐</span>
+          <span>Subtitrlarni tarjima qilish</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="enableTranslation" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="translation-options" id="translationOptions">
+        <div class="setting-row">
+          <label for="translationTargetLang">Tarjima tili:</label>
+          <select id="translationTargetLang" class="select">
+            <option value="uz" selected>O'zbekcha (uz)</option>
+            <option value="en">English (en)</option>
+            <option value="ru">Русский (ru)</option>
+            <option value="tr">Türkçe (tr)</option>
+            <option value="es">Español (es)</option>
+            <option value="fr">Français (fr)</option>
+            <option value="de">Deutsch (de)</option>
+            <option value="ja">日本語 (ja)</option>
+            <option value="ko">한국어 (ko)</option>
+            <option value="zh">中文 (zh)</option>
+            <option value="uk">Українська (uk)</option>
+            <option value="ar">العربية (ar)</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>Ko'rsatish usuli:</label>
+          <div class="radio-group">
+            <label class="radio-label" title="Subtitrdagi so'z yoki iboralar ustiga borganda o'zbekcha lug'at va bog'liqliklarni ko'rsatish">
+              <input type="radio" name="transMode" value="word" checked>
+              <span>So'z va iboralar lug'ati</span>
+            </label>
+            <label class="radio-label" title="Subtitr ustiga kursor olib borganda butun gap tarjimasini ko'rsatish">
+              <input type="radio" name="transMode" value="hover">
+              <span>Butun gapni ko'rsatish</span>
+            </label>
+            <label class="radio-label" title="Subtitr ostida tarjimasini doimiy ko'rsatib borish">
+              <input type="radio" name="transMode" value="dual">
+              <span>Ikki tilli subtitr</span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row" style="margin-top: 2px;">
+          <label class="checkbox-label" style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; color:var(--text-primary);">
+            <input type="checkbox" id="autoPauseOnWordHover" checked style="accent-color: var(--accent-primary);">
+            <span>So'z yoki ibora ustiga borganda videoni to'xtatish (Pauza)</span>
+          </label>
+        </div>
+        <div class="translation-hint">
+          💡 Istalgan so'z yoki ibora ustiga kursor olib boring: o'zbekcha ma'nosi, iboralar bog'liqligi va sinonimlar chiqadi. Butun gapni ko'rish uchun subtitrdagi 🌐 belgisini bosing.
+        </div>
+      </div>
+    </section>
+
+    <!-- Generate Button -->
+    <section class="section actions">
+      <button class="btn btn-primary" id="generateBtn" disabled>
+        <span class="btn-icon">▶</span>
+        Subtitrlarni yaratish
+      </button>
+    </section>
+
+    <!-- Progress -->
+    <section class="section progress-section" id="progressSection" style="display: none;">
+      <div class="progress-header">
+        <span class="progress-label" id="progressLabel">Ishlanmoqda...</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <div class="progress-details">
+        <div class="info-row">
+          <span class="info-label">Yaratilgan qism:</span>
+          <span class="info-value" id="progressThrough">0:00 / 0:00</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Xavfsiz tomosha qilish:</span>
+          <span class="info-value" id="safeThrough">0:00</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Subtitr qatorlari soni:</span>
+          <span class="info-value" id="cueCount">0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Complete -->
+    <section class="section complete-section" id="completeSection" style="display: none;">
+      <div class="complete-icon">✓</div>
+      <div class="complete-text">Subtitrlar tayyor!</div>
+      <div class="complete-details" id="completeDetails"></div>
+    </section>
+
+    <!-- Controls -->
+    <section class="section controls" id="controlsSection" style="display: none;">
+      <div class="control-row">
+        <button class="btn btn-sm" id="showBtn">Subtitrni ko'rsatish</button>
+        <button class="btn btn-sm btn-outline" id="hideBtn">Yashirish</button>
+      </div>
+      <div class="control-row">
+        <label class="control-label">Vaqt siljishi:</label>
+        <div class="offset-controls">
+          <button class="btn btn-xs" data-offset="-5000">-5s</button>
+          <button class="btn btn-xs" data-offset="-1000">-1s</button>
+          <span class="offset-value" id="offsetValue">0ms</span>
+          <button class="btn btn-xs" data-offset="1000">+1s</button>
+          <button class="btn btn-xs" data-offset="5000">+5s</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Export -->
+    <section class="section export" id="exportSection" style="display: none;">
+      <button class="btn btn-sm btn-outline" id="exportVTT">VTT yuklab olish</button>
+      <button class="btn btn-sm btn-outline" id="exportSRT">SRT yuklab olish</button>
+      <button class="btn btn-sm btn-outline" id="loadVTT">VTT/SRT yuklash</button>
+      <input type="file" id="vttFileInput" accept=".vtt,.srt" style="display: none;">
+    </section>
+
+    <!-- Mode Warning -->
+    <section class="section mode-warning" id="modeWarning" style="display: none;">
+      <div class="warning-icon">⚠</div>
+      <div class="warning-text" id="warningText"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <span class="footer-text">Mahalliy AI • Ma'lumotlar serverga yuborilmaydi</span>
+      <button class="btn btn-link" id="clearCache">Keshni tozalash</button>
+    </footer>
+  </div>
+
+  <script type="module" src="popup.ts"></script>
+</body>
+</html>

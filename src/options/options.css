@@ -1,0 +1,129 @@
+/* ============================================================
+   AheadSub — Options Page Styles
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0f0f14;
+  color: #e8e8f0;
+  min-height: 100vh;
+  padding: 40px;
+}
+
+.options-container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6C5CE7, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 32px;
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #9898b0;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.option-group {
+  background: rgba(30, 30, 50, 0.8);
+  border: 1px solid rgba(108, 92, 231, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.option-row:last-child { margin-bottom: 0; }
+
+.option-row > label {
+  min-width: 180px;
+  font-size: 14px;
+  color: #e8e8f0;
+}
+
+input[type="range"] { flex: 1; accent-color: #6C5CE7; }
+input[type="number"], input[type="password"], select {
+  background: #1a1a24;
+  color: #e8e8f0;
+  border: 1px solid rgba(108, 92, 231, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  flex: 1;
+}
+
+input[type="color"] {
+  width: 48px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+input[type="checkbox"] { accent-color: #6C5CE7; }
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #6C5CE7, #a855f7);
+  color: white;
+}
+
+.btn-primary:hover { box-shadow: 0 4px 14px rgba(108, 92, 231, 0.4); }
+
+.btn-outline {
+  background: transparent;
+  color: #e8e8f0;
+  border: 1px solid rgba(108, 92, 231, 0.3);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+#cacheInfo, #hardwareInfo {
+  font-size: 13px;
+  color: #9898b0;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
