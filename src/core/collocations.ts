@@ -432,7 +432,10 @@ export const INSTANT_UZBEK_WORDS: Record<string, { uz: string; pos?: string; bas
  * Clean a token to plain lowercase letters/numbers
  */
 export function cleanToken(text: string): string {
-  return text.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').toLowerCase();
+  return text.trim()
+    .replace(/[’`]/g, "'")
+    .replace(/^[^\p{L}\p{N}']+|[^\p{L}\p{N}']+$/gu, '')
+    .toLowerCase();
 }
 
 /**

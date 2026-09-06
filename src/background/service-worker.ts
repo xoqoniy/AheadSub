@@ -1014,15 +1014,14 @@ async function handleTranslateText(
   }
 
   // Automatic script detection for source language:
-  // If text contains Cyrillic, it is Russian. If only Latin, it is English.
-  let srcLang = payload?.sourceLang && payload.sourceLang !== 'auto' ? payload.sourceLang : (state.settings.spokenLanguage || 'ru');
+  // If text contains Cyrillic, it is Russian. If text contains Latin letters, it is English.
+  let srcLang = payload?.sourceLang && payload.sourceLang !== 'auto' ? payload.sourceLang : (state.settings.spokenLanguage || 'auto');
   if (/[а-яА-ЯёЁ]/u.test(text)) {
     srcLang = 'ru';
-    // If targetLang is Russian on Russian text, user needs Uzbek translation!
     if (targetLang === 'ru') {
       targetLang = 'uz';
     }
-  } else if (/^[a-zA-Z0-9\s\-',.!?]+$/u.test(text)) {
+  } else if (/[a-zA-Z]/u.test(text)) {
     srcLang = 'en';
     if (targetLang === 'en') {
       targetLang = 'uz';
@@ -1141,7 +1140,13 @@ async function handleTranslateText(
         !translated.includes('<') &&
         !translated.includes('GoogleSorry')
       ) {
-        const result: TranslationCacheItem = { translatedText: translated.trim(), dictEntries, sourceLang: srcLang };
+        const cleanTranslated = translated.trim()
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>');
+        const result: TranslationCacheItem = { translatedText: cleanTranslated, dictEntries, sourceLang: srcLang };
         persistTranslation(cacheKey, result);
         return result;
       }
