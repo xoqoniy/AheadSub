@@ -221,8 +221,12 @@ function updateProgress(progress: PipelineProgress): void {
     elements.safeThrough.textContent = '0:00';
     elements.cueCount.textContent = '0';
   } else {
-    elements.progressThrough.textContent =
-      `${formatDuration(progress.processedDuration)} / ${formatDuration(progress.totalDuration)}`;
+    if (progress.processedDuration === 0) {
+      elements.progressThrough.textContent = `Videoni ijro eting (Play)...`;
+    } else {
+      elements.progressThrough.textContent =
+        `${formatDuration(progress.processedDuration)} / ${formatDuration(progress.totalDuration)}`;
+    }
     elements.safeThrough.textContent = formatDuration(progress.safePlaybackThrough);
     elements.cueCount.textContent = String(progress.cuesGenerated);
   }

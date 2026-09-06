@@ -448,6 +448,11 @@ class AheadSubContent {
     }
     if (!this.activeVideo) return;
 
+    // Automatically resume video playback if paused so live audio streams immediately!
+    if (this.activeVideo.paused) {
+      this.activeVideo.play().catch(() => {});
+    }
+
     try {
       const stream = (this.activeVideo as any).captureStream ? (this.activeVideo as any).captureStream() : (this.activeVideo as any).mozCaptureStream?.();
       if (!stream) return;

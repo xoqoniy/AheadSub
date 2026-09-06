@@ -593,7 +593,9 @@ async function handleMessage(
       }
 
       case 'OFFSCREEN_PROCESS_LIVE_CHUNK' as any: {
-        chrome.runtime.sendMessage(message).catch(() => {});
+        if (sender.tab) {
+          chrome.runtime.sendMessage(message).catch(() => {});
+        }
         sendResponse({ success: true });
         break;
       }
