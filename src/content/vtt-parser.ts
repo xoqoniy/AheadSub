@@ -137,20 +137,20 @@ export function parseSRT(srtContent: string): SubtitleCue[] {
  */
 function parseTimestampLine(line: string): { start: number; end: number } | null {
   const match = line.match(
-    /(\d{1,2}:)?(\d{2}):(\d{2})[.,](\d{3})\s*-->\s*(\d{1,2}:)?(\d{2}):(\d{2})[.,](\d{3})/
+    /(?:(\d{1,2}):)?(\d{2}):(\d{2})[.,](\d{3})\s*-->\s*(?:(\d{1,2}):)?(\d{2}):(\d{2})[.,](\d{3})/
   );
 
   if (!match) return null;
 
-  const startHours = match[1] ? parseInt(match[1]) : 0;
-  const startMinutes = parseInt(match[2]!);
-  const startSeconds = parseInt(match[3]!);
-  const startMs = parseInt(match[4]!);
+  const startHours = match[1] ? parseInt(match[1], 10) : 0;
+  const startMinutes = parseInt(match[2]!, 10);
+  const startSeconds = parseInt(match[3]!, 10);
+  const startMs = parseInt(match[4]!, 10);
 
-  const endHours = match[5] ? parseInt(match[5]) : 0;
-  const endMinutes = parseInt(match[6]!);
-  const endSeconds = parseInt(match[7]!);
-  const endMs = parseInt(match[8]!);
+  const endHours = match[5] ? parseInt(match[5], 10) : 0;
+  const endMinutes = parseInt(match[6]!, 10);
+  const endSeconds = parseInt(match[7]!, 10);
+  const endMs = parseInt(match[8]!, 10);
 
   const start = startHours * 3600 + startMinutes * 60 + startSeconds + startMs / 1000;
   const end = endHours * 3600 + endMinutes * 60 + endSeconds + endMs / 1000;
@@ -176,12 +176,20 @@ function stripHTMLTags(text: string): string {
  * Format seconds to VTT timestamp string.
  */
 export function formatVTTTimestamp(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const ms = Math.round((seconds % 1) * 1000);
+  if (!isFinite(seconds) || seconds < 0) seconds = 0;
+  const totalMs = Math.round(seconds * 1000);
+  const ms = totalMs % 1000;
+  const totalSeconds = Math.floor(totalMs / 1000);
+  const s = totalSeconds % 60;
+  const m = Math.floor(totalSeconds / 60) % 60;
+  const h = Math.floor(totalSeconds / 3600);
 
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+  return (
+    h.toString().padStart(2, '0') + ':' +
+    m.toString().padStart(2, '0') + ':' +
+    s.toString().padStart(2, '0') + '.' +
+    ms.toString().padStart(3, '0')
+  );
 }
 
 /**
