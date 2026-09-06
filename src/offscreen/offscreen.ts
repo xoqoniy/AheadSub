@@ -89,20 +89,49 @@ async function handleMessage(
 
       case 'OFFSCREEN_PROCESS_LIVE_CHUNK' as any: {
         const p = message.payload as any;
-        const targetTabId = p.tabId ?? 0;
-        let pipeline = activePipelines.get(targetTabId);
-        if (!pipeline && activePipelines.size === 1) {
-          pipeline = activePipelines.values().next().value;
-        }
-        if (pipeline && !pipeline.abort && pipeline.onChunk && p.pcmData) {
+        const targetTabId = p.tabId || lastRequestedTabId || Array.from(activePipelines.keys())[0] || 0;
+        
+        if (p.pcmData && p.pcmData.length > 0) {
           const pcm = new Float32Array(p.pcmData);
-          await pipeline.onChunk({
-            pcmData: pcm,
-            sampleRate: 16000,
-            startTime: p.startTime,
-            endTime: p.endTime,
-            chunkIndex: p.chunkIndex
-          });
+          try {
+            const res = await transcribeChunkOffscreen(
+              pcm,
+              p.chunkIndex,
+              p.startTime,
+              'auto'
+            );
+
+            // Forward transcription result tagged with targetTabId
+            chrome.runtime.sendMessage({
+              type: MessageType.OFFSCREEN_TRANSCRIPTION_RESULT,
+              payload: {
+                tabId: targetTabId,
+                cues: res.cues,
+                chunkStartTime: p.startTime,
+                chunkIndex: p.chunkIndex,
+                detectedLanguage: res.detectedLanguage,
+                processingTimeMs: res.processingTimeMs,
+              },
+            });
+
+            // Update progress bar state immediately
+            chrome.runtime.sendMessage({
+              type: MessageType.PIPELINE_PROGRESS,
+              payload: {
+                tabId: targetTabId,
+                state: PipelineState.TRANSCRIBING,
+                mode: ProcessingMode.REALTIME,
+                processedDuration: p.endTime,
+                totalDuration: Math.max(p.endTime, p.endTime + 30),
+                currentChunkStart: p.startTime,
+                currentChunkEnd: p.endTime,
+                cuesGenerated: res.cues ? res.cues.length : 0,
+                safePlaybackThrough: p.startTime,
+              } as any,
+            });
+          } catch (tErr) {
+            console.error('[AheadSub Offscreen] Live chunk transcription error:', tErr);
+          }
         }
         sendResponse({ success: true });
         break;
@@ -318,8 +347,9 @@ async function handleStartOffscreenPipeline(payload: {
     pipelineState.onChunk = onChunk;
     let manifest = videoInfo.manifestUrl;
 
-    // If manifestUrl is missing, wait up to 3s and poll background in case it arrived slightly after button press
-    if (!manifest && (!videoInfo.sourceUrl || !videoInfo.sourceUrl.startsWith('http'))) {
+    // Skip manifest polling for live stream capture (e.g. YouTube blob video)
+    const isCaptureStream = videoInfo.audioAccessMethod === AudioAccessMethod.CAPTURE_STREAM;
+    if (!isCaptureStream && !manifest && (!videoInfo.sourceUrl || !videoInfo.sourceUrl.startsWith('http'))) {
       console.log(`[AheadSub Offscreen] [Tab ${tabId}] Manifest/Audio URL missing, polling background...`);
       for (let i = 0; i < 6; i++) {
         if (pipelineState.abort) break;

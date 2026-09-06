@@ -463,8 +463,8 @@ class AheadSubContent {
 
       let buffer: number[] = [];
       let chunkIndex = 0;
-      const INITIAL_CHUNK_SAMPLES = 16000 * 6; // 6-second initial chunk for fast subtitle feedback
-      const CHUNK_SAMPLES = 16000 * 12; // 12-second subsequent chunks
+      const INITIAL_CHUNK_SAMPLES = 16000 * 2.5; // 2.5-second initial chunk for fast subtitle feedback
+      const CHUNK_SAMPLES = 16000 * 6; // 6-second subsequent chunks
 
       this.liveAudioProcessor.onaudioprocess = (e) => {
         // Mute processor output to prevent audio feedback / echo to speakers
