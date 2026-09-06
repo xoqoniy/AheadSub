@@ -482,12 +482,6 @@ async function handleMessage(
              type: MessageType.START_PIPELINE,
              payload: { settings: state.settings }
           }, { frameId }).catch(() => {});
-          if (frameId !== 0) {
-            chrome.tabs.sendMessage(targetTabId, {
-               type: MessageType.START_PIPELINE,
-               payload: { settings: state.settings }
-            }).catch(() => {});
-          }
         }
         sendResponse({ success: true });
         break;
@@ -582,11 +576,8 @@ async function handleMessage(
         const innerMsg = p?.message;
         if (targetTabId && innerMsg) {
           const session = getTabSession(targetTabId);
-          const frameId = session.activeFrameId ?? state.activeFrameId ?? 0;
+          const frameId = session?.activeFrameId ?? state.activeFrameId ?? 0;
           chrome.tabs.sendMessage(targetTabId, innerMsg, { frameId }).catch(() => {});
-          if (frameId !== 0) {
-            chrome.tabs.sendMessage(targetTabId, innerMsg).catch(() => {});
-          }
         }
         sendResponse({ success: true });
         break;
@@ -597,11 +588,8 @@ async function handleMessage(
         const targetTabId = (message.payload as any)?.tabId ?? state.activeTabId;
         if (targetTabId) {
           const session = getTabSession(targetTabId);
-          const frameId = session.activeFrameId ?? state.activeFrameId ?? 0;
+          const frameId = session?.activeFrameId ?? state.activeFrameId ?? 0;
           chrome.tabs.sendMessage(targetTabId, message, { frameId }).catch(() => {});
-          if (frameId !== 0) {
-            chrome.tabs.sendMessage(targetTabId, message).catch(() => {});
-          }
         }
         sendResponse({ success: true });
         break;
@@ -1116,7 +1104,7 @@ async function handleTranslateText(
 
     const encoded = encodeURIComponent(text);
 
-    // 2. High-speed Google Translate API Endpoints (prioritizing clients5 dict-chrome-ex which bypasses bot blocks)
+    // 2. High-speed Google Translate API Endpoints (using Neural Machine Translation for full sentences)
     const endpoints = isWord
       ? [
           `https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=${encodeURIComponent(srcLang)}&tl=${encodeURIComponent(targetLang)}&q=${encoded}`,
@@ -1124,9 +1112,9 @@ async function handleTranslateText(
           `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(srcLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&dt=bd&q=${encoded}`,
         ]
       : [
+          `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(srcLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&dt=bd&q=${encoded}`,
+          `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=${encodeURIComponent(srcLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&dt=bd&q=${encoded}`,
           `https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=${encodeURIComponent(srcLang)}&tl=${encodeURIComponent(targetLang)}&q=${encoded}`,
-          `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=${encodeURIComponent(srcLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encoded}`,
-          `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(srcLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encoded}`,
         ];
 
     try {
@@ -1139,18 +1127,19 @@ async function handleTranslateText(
         if (typeof data[0] === 'string') {
           translated = data[0];
         } else if (Array.isArray(data[0])) {
-          // clients5 dict-chrome-ex returns [ ["translated text", "ru"] ]
-          if (typeof data[0][0] === 'string' && (data[0].length === 1 || (data[0].length === 2 && typeof data[0][1] === 'string' && data[0][1].length <= 5))) {
-            translated = data[0][0];
-          } else {
-            // dt=t chunked format: [ [ ["chunk1", "orig1"], ["chunk2", "orig2"] ] ]
-            for (const item of data[0]) {
-              if (Array.isArray(item) && typeof item[0] === 'string') {
-                translated += item[0];
-              } else if (typeof item === 'string') {
-                translated += item;
-              }
+          // NMT chunked segment format: [ [ ["translated chunk 1", "orig 1"], ["translated chunk 2", "orig 2"] ] ]
+          let fullStr = '';
+          for (const item of data[0]) {
+            if (Array.isArray(item) && typeof item[0] === 'string') {
+              fullStr += item[0];
+            } else if (typeof item === 'string') {
+              fullStr += item;
             }
+          }
+          if (fullStr.trim()) {
+            translated = fullStr;
+          } else if (typeof data[0][0] === 'string') {
+            translated = data[0][0];
           }
         }
       }
@@ -1400,21 +1389,12 @@ function handleTranscriptionResult(payload: TranscriptionResultPayload & { tabId
     };
 
     chrome.tabs.sendMessage(targetTabId, updateMsg, msgOpts).catch(() => {});
-    if (frameId !== 0) {
-      chrome.tabs.sendMessage(targetTabId, updateMsg).catch(() => {});
-    }
     
     // CRITICAL: forward OFFSCREEN_TRANSCRIPTION_RESULT so the pipeline's awaiting Promise resolves
     chrome.tabs.sendMessage(targetTabId, {
       type: MessageType.OFFSCREEN_TRANSCRIPTION_RESULT,
       payload,
     }, msgOpts).catch(() => {});
-    if (frameId !== 0) {
-      chrome.tabs.sendMessage(targetTabId, {
-        type: MessageType.OFFSCREEN_TRANSCRIPTION_RESULT,
-        payload,
-      }).catch(() => {});
-    }
   }
 }
 
@@ -1498,9 +1478,6 @@ async function forwardToActiveTab(message: ExtensionMessage): Promise<void> {
     const session = tabSessions.get(state.activeTabId);
     const frameId = session?.activeFrameId ?? state.activeFrameId ?? 0;
     await chrome.tabs.sendMessage(state.activeTabId, message, { frameId }).catch(() => {});
-    if (frameId !== 0) {
-      await chrome.tabs.sendMessage(state.activeTabId, message).catch(() => {});
-    }
   }
 }
 

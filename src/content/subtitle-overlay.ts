@@ -924,8 +924,7 @@ export class SubtitleOverlay {
 
   private stripNoiseAnnotations(text: string): string {
     if (!text) return '';
-    let clean = text.replace(/[\(\[\{]\s*(BLANK_AUDIO|MUSIC|SILENCE|NOISE|LAUGHTER|APPLAUSE|SOBBING|COUGHING|SOUND|TAG|UNK|SPEAKING_FOREIGN|BLANK|AUDIO|NO_SPEECH)\s*[\)\]\}]/gi, '');
-    clean = clean.replace(/[\(\[\{][^\)\]\}]*?(BLANK|AUDIO|MUSIC|SILENCE|NOISE|SOUND|SIGH|LAUGHT|COUGH|CHUCKLE|SOB|GASP)[^\)\]\}]*?[\)\]\}]/gi, '');
+    let clean = text.replace(/[\(\[\{]\s*(BLANK_AUDIO|MUSIC|SILENCE|NOISE|LAUGHTER|APPLAUSE|SOBBING|COUGHING|SOUND|TAG|UNK|SPEAKING_FOREIGN)\s*[\)\]\}]/gi, '');
     return clean.replace(/\s+/g, ' ').trim();
   }
 

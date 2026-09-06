@@ -22,7 +22,13 @@ export const RUSSIAN_COLLOCATIONS: Record<
   { uz: string; en: string; category: 'idiom' | 'collocation' | 'compound' | 'name' }
 > = {
   // Roles, Titles & Media Collocations
+  'кабинет ректора': { uz: 'Rektor kabineti', en: 'Rector\'s office', category: 'collocation' },
+  'в кабинет ректора': { uz: 'Rektor kabinetiga', en: 'To rector\'s office', category: 'collocation' },
+  'в кабинете ректора': { uz: 'Rektor kabinetida', en: 'In rector\'s office', category: 'collocation' },
+  'кабинет ректором': { uz: 'Rektor kabineti', en: 'Rector\'s office', category: 'collocation' },
   'ректор академии': { uz: 'Akademiya rektori', en: 'Rector of the academy', category: 'collocation' },
+  'в академии': { uz: 'Akademiyada', en: 'In the academy', category: 'collocation' },
+  'из академии': { uz: 'Akademiyadan', en: 'From the academy', category: 'collocation' },
   'магическая академия': { uz: 'Sehrgarlik akademiyasi', en: 'Magic academy', category: 'collocation' },
   'магической академии': { uz: 'Sehrgarlik akademiyasi', en: 'Magic academy', category: 'collocation' },
   'король демонов': { uz: 'Demonlar qiroli', en: 'Demon king', category: 'collocation' },
@@ -42,6 +48,18 @@ export const RUSSIAN_COLLOCATIONS: Record<
   'образ жизни': { uz: 'Hayot tarzi', en: 'Lifestyle', category: 'collocation' },
 
   // Conversational Idioms & Phrasal Expressions
+  'что случилось': { uz: "Nima bo'ldi?", en: 'What happened?', category: 'idiom' },
+  'что произошло': { uz: "Nima sodir bo'ldi?", en: 'What happened?', category: 'idiom' },
+  'что делать': { uz: 'Nima qilish kerak?', en: 'What to do?', category: 'idiom' },
+  'не может быть': { uz: "Bo'lishi mumkin emas!", en: 'It can\'t be!', category: 'idiom' },
+  'все в порядке': { uz: 'Hammasi joyida', en: 'Everything is fine', category: 'idiom' },
+  'всё в порядке': { uz: 'Hammasi joyida', en: 'Everything is fine', category: 'idiom' },
+  'всё хорошо': { uz: 'Hammasi yaxshi', en: 'Everything is good', category: 'idiom' },
+  'ничего страшного': { uz: 'Hech qisi yo\'q', en: 'No problem / Don\'t worry', category: 'idiom' },
+  'пошли отсюда': { uz: 'Bu yerdan ketdik', en: 'Let\'s get out of here', category: 'idiom' },
+  'честно говоря': { uz: 'Rostini aytsam', en: 'Honestly speaking', category: 'idiom' },
+  'с самого начала': { uz: 'Boshidanoq', en: 'From the very beginning', category: 'idiom' },
+  'так и знал': { uz: 'Shunday bo\'lishini bilardim!', en: 'I knew it!', category: 'idiom' },
   'вроде как': { uz: "kabi / go'yoki", en: 'kind of / as if', category: 'idiom' },
   'как будто': { uz: "go'yo / xuddi", en: 'as if / like', category: 'idiom' },
   'до сих пор': { uz: 'shu paytgacha / hanuzgacha', en: 'until now / so far', category: 'idiom' },

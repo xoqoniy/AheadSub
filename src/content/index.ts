@@ -57,6 +57,16 @@ class AheadSubContent {
       this.handleMessage(message, sendResponse);
       return true; // async response
     });
+
+    // Listen for cross-frame overlay coordination
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'AHEADSUB_IFRAME_ATTACHED') {
+        if (window === window.top) {
+          console.log('[AheadSub] Video player attached inside iframe, detaching top-level overlay');
+          this.overlay.detach();
+        }
+      }
+    });
   }
 
   private onVideoFound(info: MediaInfo): void {
@@ -73,6 +83,11 @@ class AheadSubContent {
       this.sync.attach(newVideo);
       if (this.overlay.getCueCount() > 0 || this.overlay.isAttached()) {
         this.overlay.attach(newVideo);
+      }
+      if (window !== window.top) {
+        try {
+          window.parent.postMessage({ type: 'AHEADSUB_IFRAME_ATTACHED' }, '*');
+        } catch {}
       }
     }
 
@@ -480,9 +495,14 @@ class AheadSubContent {
         // Mute processor output to prevent audio feedback / echo to speakers
         e.outputBuffer.getChannelData(0).fill(0);
 
-        const inputData = e.inputBuffer.getChannelData(0);
-        for (let i = 0; i < inputData.length; i++) {
-          buffer.push(inputData[i]!);
+        const rawInput = e.inputBuffer.getChannelData(0);
+        const actualSampleRate = this.liveAudioContext?.sampleRate || e.inputBuffer.sampleRate || 48000;
+        
+        // Resample live audio to true 16,000 Hz PCM so Whisper hears normal speech pitch and speed
+        const resampled = actualSampleRate !== 16000 ? this.resampleLiveAudio(rawInput, actualSampleRate, 16000) : rawInput;
+
+        for (let i = 0; i < resampled.length; i++) {
+          buffer.push(resampled[i]!);
         }
 
         const targetLimit = chunkIndex === 0 ? INITIAL_CHUNK_SAMPLES : CHUNK_SAMPLES;
@@ -506,10 +526,25 @@ class AheadSubContent {
 
       this.liveAudioSource.connect(this.liveAudioProcessor);
       this.liveAudioProcessor.connect(this.liveAudioContext.destination);
-      console.log('[AheadSub] Live audio capture started via captureStream');
+      console.log('[AheadSub] Live audio capture started via captureStream (Resampled to 16kHz)');
     } catch (e) {
       console.warn('[AheadSub] Failed to start live audio capture:', e);
     }
+  }
+
+  private resampleLiveAudio(data: Float32Array, fromRate: number, toRate: number): Float32Array {
+    if (fromRate === toRate) return data;
+    const ratio = fromRate / toRate;
+    const newLength = Math.round(data.length / ratio);
+    const result = new Float32Array(newLength);
+    for (let i = 0; i < newLength; i++) {
+      const srcIndex = i * ratio;
+      const low = Math.floor(srcIndex);
+      const high = Math.min(low + 1, data.length - 1);
+      const frac = srcIndex - low;
+      result[i] = data[low]! * (1 - frac) + data[high]! * frac;
+    }
+    return result;
   }
 
   private stopLiveAudioCapture(): void {

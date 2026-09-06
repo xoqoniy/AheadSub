@@ -274,15 +274,27 @@ interface WhisperChunk {
 
 function stripNoiseAnnotations(text: string): string {
   if (!text) return '';
-  let clean = text.replace(/[\(\[\{]\s*(BLANK_AUDIO|MUSIC|SILENCE|NOISE|LAUGHTER|APPLAUSE|SOBBING|COUGHING|SOUND|TAG|UNK|SPEAKING_FOREIGN|BLANK|AUDIO|NO_SPEECH)\s*[\)\]\}]/gi, '');
-  clean = clean.replace(/[\(\[\{][^\)\]\}]*?(BLANK|AUDIO|MUSIC|SILENCE|NOISE|SOUND|SIGH|LAUGHT|COUGH|CHUCKLE|SOB|GASP)[^\)\]\}]*?[\)\]\}]/gi, '');
+  let clean = text.replace(/[\(\[\{]\s*(BLANK_AUDIO|MUSIC|SILENCE|NOISE|LAUGHTER|APPLAUSE|SOBBING|COUGHING|SOUND|TAG|UNK|SPEAKING_FOREIGN)\s*[\)\]\}]/gi, '');
   return clean.replace(/\s+/g, ' ').trim();
 }
+
+const NOISE_WORDS = new Set([
+  'blank_audio', 'music', 'silence', 'noise', 'laughter', 'applause',
+  'sobbing', 'coughing', 'sound', 'tag', 'unk', 'speaking_foreign',
+  'voice', 'voices', 'laughs', 'laugh', 'gasp', 'sigh', 'sighs', 'screaming',
+  'crying', 'cough', 'groan', 'cheering', 'whispering', 'chuckle'
+]);
 
 function isNoiseOrBlankText(text: string): boolean {
   if (!text || !text.trim()) return true;
   const clean = stripNoiseAnnotations(text);
-  return clean.length === 0;
+  if (clean.length === 0) return true;
+
+  const lower = clean.toLowerCase().replace(/^[^a-z]+|[^a-z]+$/gi, '');
+  if (lower && NOISE_WORDS.has(lower) && clean.length <= lower.length + 4) {
+    return true;
+  }
+  return false;
 }
 
 function buildCuesFromWhisperOutput(
