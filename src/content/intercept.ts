@@ -177,9 +177,27 @@
         const playerResponse = (window as any).ytInitialPlayerResponse || player?.getPlayerResponse?.();
         const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
 
-        let track = tracks.find((t: any) => t.languageCode === lang) ||
-                    tracks.find((t: any) => t.languageCode === 'en' || t.vssId?.includes('.en')) ||
-                    tracks[0];
+        // Match requested language or any variant (e.g. en-US, en-GB for en)
+        let track = tracks.find((t: any) => 
+          (lang && t.languageCode === lang) || 
+          (lang && lang !== 'auto' && t.languageCode?.startsWith(lang)) ||
+          (lang && lang !== 'auto' && t.vssId?.includes(`.${lang}`)) ||
+          (lang && lang !== 'auto' && t.vssId?.includes(`a.${lang}`))
+        );
+
+        // Fallback to English if auto or not found
+        if (!track) {
+          track = tracks.find((t: any) => 
+            t.languageCode === 'en' ||
+            t.languageCode?.startsWith('en') || 
+            t.vssId?.includes('.en') || 
+            t.vssId?.includes('a.en')
+          );
+        }
+
+        if (!track && tracks.length > 0) {
+          track = tracks[0];
+        }
 
         if (track && track.baseUrl) {
           let fetchUrl = track.baseUrl;

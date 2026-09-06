@@ -347,13 +347,12 @@ async function handleStartOffscreenPipeline(payload: {
     pipelineState.onChunk = onChunk;
     let manifest = videoInfo.manifestUrl;
 
-    // Skip manifest polling for live stream capture (e.g. YouTube blob video)
-    const isCaptureStream = videoInfo.audioAccessMethod === AudioAccessMethod.CAPTURE_STREAM;
-    if (!isCaptureStream && !manifest && (!videoInfo.sourceUrl || !videoInfo.sourceUrl.startsWith('http'))) {
+    // Poll background if manifest or direct HTTP audio URL is missing
+    if (!manifest && (!videoInfo.sourceUrl || !videoInfo.sourceUrl.startsWith('http'))) {
       console.log(`[AheadSub Offscreen] [Tab ${tabId}] Manifest/Audio URL missing, polling background...`);
       for (let i = 0; i < 6; i++) {
         if (pipelineState.abort) break;
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 400));
         try {
           const bgState: any = await chrome.runtime.sendMessage({
             type: MessageType.GET_VIDEO_INFO,
