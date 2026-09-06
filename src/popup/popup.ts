@@ -381,7 +381,7 @@ async function handleGenerate(): Promise<void> {
   }
 
   // If no video is found at all on the page, inform user
-  if (!currentVideoInfo || (!currentVideoInfo.duration && !currentVideoInfo.sourceUrl && !currentVideoInfo.isPlaying)) {
+  if (!currentVideoInfo) {
     elements.modeWarning.style.display = 'flex';
     elements.warningText.textContent = 'Sahifada video topilmadi. Iltimos, videoni oching va ijro eting.';
     elements.generateBtn.disabled = false;

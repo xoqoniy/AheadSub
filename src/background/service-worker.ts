@@ -696,12 +696,20 @@ function inPageScanForVideos(): any {
   let bestScore = -1;
 
   for (const v of vids) {
-    let score = 100; // Base score: a real video element exists in the DOM/Shadow DOM
+    let score = 100;
     const w = v.videoWidth || v.offsetWidth || v.clientWidth || 0;
     const h = v.videoHeight || v.offsetHeight || v.clientHeight || 0;
     const area = w * h;
-    if (area > 0) score += Math.min(5000, area / 100);
-    if (v.duration && isFinite(v.duration) && v.duration > 0) score += 100000;
+
+    // Heavily penalize invisible or tiny video elements (ad pixels / audio tracking tags)
+    if (w < 100 || h < 100) {
+      score -= 500000;
+    } else {
+      score += Math.min(100000, area / 10);
+      if (w >= 300 && h >= 150) score += 200000;
+    }
+
+    if (v.duration && isFinite(v.duration) && v.duration > 0) score += 30000;
     if (!v.paused && !v.ended) score += 50000;
     if (v.currentTime > 0) score += 10000;
     const src = v.currentSrc || v.src || v.querySelector('source')?.src || v.querySelector('source')?.getAttribute('src') || v.getAttribute('src') || v.getAttribute('data-src') || '';
@@ -781,7 +789,7 @@ async function handleGetVideoInfo(sendResponse: (r: any) => void, requestedTabId
   }
 
   // 1. If video was already detected and active in session, return it immediately
-  if (session.videoInfo && (session.videoInfo.duration! > 0 || session.videoInfo.sourceUrl || session.videoInfo.isPlaying)) {
+  if (session.videoInfo && (session.videoInfo.duration! > 0 || session.videoInfo.sourceUrl || session.videoInfo.isPlaying || (session.videoInfo as any).hasVideo)) {
     const info = applyManifestToInfo(session.videoInfo, tabId);
     session.videoInfo = info;
     state.videoInfo = info;
