@@ -115,48 +115,64 @@ async function loadModel(payload: {
 
   const fileProgress = new Map<string, number>();
 
-  // Create the ASR pipeline
-  transcriber = await createPipeline(
-    'automatic-speech-recognition',
-    modelId,
-    {
-      device,
-      dtype: device === 'webgpu' ? 'fp32' : 'q8',
-      progress_callback: (progress: any) => {
-        const fileKey = progress.file || 'model';
-        let filePct = 0;
-        if (progress.status === 'done') {
-          filePct = 100;
-        } else if (typeof progress.progress === 'number' && progress.progress > 0) {
-          filePct = progress.progress <= 1 ? progress.progress * 100 : progress.progress;
-        } else if (progress.total && progress.loaded) {
-          filePct = Math.min(100, (progress.loaded / progress.total) * 100);
-        }
-        fileProgress.set(fileKey, filePct);
-
-        // Compute overall progress across tracked files
-        let sum = 0;
-        let count = 0;
-        for (const p of fileProgress.values()) {
-          sum += p;
-          count++;
-        }
-        const overallProgress = count > 0 ? Math.round(sum / count) : 0;
-
-        self.postMessage({
-          type: 'model_progress',
-          payload: {
-            status: progress.status,
-            progress: overallProgress,
-            file: progress.file,
-            loaded: progress.loaded,
-            total: progress.total,
-            modelId,
-          },
-        });
-      },
+  const makeProgressCallback = () => (progress: any) => {
+    const fileKey = progress.file || 'model';
+    let filePct = 0;
+    if (progress.status === 'done') {
+      filePct = 100;
+    } else if (typeof progress.progress === 'number' && progress.progress > 0) {
+      filePct = progress.progress <= 1 ? progress.progress * 100 : progress.progress;
+    } else if (progress.total && progress.loaded) {
+      filePct = Math.min(100, (progress.loaded / progress.total) * 100);
     }
-  );
+    fileProgress.set(fileKey, filePct);
+
+    let sum = 0;
+    let count = 0;
+    for (const p of fileProgress.values()) {
+      sum += p;
+      count++;
+    }
+    const overallProgress = count > 0 ? Math.round(sum / count) : 0;
+
+    self.postMessage({
+      type: 'model_progress',
+      payload: {
+        status: progress.status,
+        progress: overallProgress,
+        file: progress.file,
+        loaded: progress.loaded,
+        total: progress.total,
+        modelId,
+      },
+    });
+  };
+
+  try {
+    transcriber = await createPipeline(
+      'automatic-speech-recognition',
+      modelId,
+      {
+        device,
+        progress_callback: makeProgressCallback(),
+      }
+    );
+  } catch (err: any) {
+    if (device === 'webgpu') {
+      console.warn('[AheadSub Worker] WebGPU initialization failed, falling back to WASM:', err);
+      device = 'wasm';
+      transcriber = await createPipeline(
+        'automatic-speech-recognition',
+        modelId,
+        {
+          device: 'wasm',
+          progress_callback: makeProgressCallback(),
+        }
+      );
+    } else {
+      throw err;
+    }
+  }
 
   currentModelId = modelId;
 
