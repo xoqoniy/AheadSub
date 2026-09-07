@@ -49,10 +49,18 @@ export async function getCachedResult(key: CacheKey): Promise<TranscriptionResul
     const entry = await db.getFromIndex(CACHE_STORE_NAME, 'cacheKey', cacheKey);
 
     if (entry) {
+      const result = (entry as CacheEntry).result;
+      // Do not use corrupted or empty 0-cue cached entries
+      if (!result || !result.cues || result.cues.length === 0) {
+        console.warn(`[AheadSub Cache] Purging corrupt/empty cache entry for ${cacheKey}`);
+        await db.delete(CACHE_STORE_NAME, entry.id);
+        return null;
+      }
+
       // Update access time
       entry.accessedAt = Date.now();
       await db.put(CACHE_STORE_NAME, entry);
-      return (entry as CacheEntry).result;
+      return result;
     }
 
     return null;
@@ -70,6 +78,12 @@ export async function cacheResult(
   result: TranscriptionResult
 ): Promise<void> {
   try {
+    // Never cache empty or failed results
+    if (!result || !result.cues || result.cues.length === 0) {
+      console.log('[AheadSub Cache] Skipping cache for 0 cues');
+      return;
+    }
+
     const db = await getDB();
     const cacheKey = generateCacheKey(key);
     const now = Date.now();
@@ -96,7 +110,7 @@ export async function cacheResult(
     }
 
     await db.put(CACHE_STORE_NAME, entry);
-    console.log(`[AheadSub Cache] Stored: ${cacheKey}`);
+    console.log(`[AheadSub Cache] Stored: ${cacheKey} (${result.cues.length} cues)`);
   } catch (error) {
     console.error('[AheadSub Cache] Store error:', error);
   }

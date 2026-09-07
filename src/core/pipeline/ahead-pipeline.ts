@@ -61,7 +61,7 @@ export class AheadPipeline {
     };
 
     const cached = await getCachedResult(cacheKey);
-    if (cached) {
+    if (cached && cached.cues && cached.cues.length > 0) {
       const progress: PipelineProgress = {
         state: PipelineState.CACHED,
         mode: ProcessingMode.FULL_PRE_GENERATION,

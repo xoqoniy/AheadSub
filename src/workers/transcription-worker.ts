@@ -207,10 +207,15 @@ async function transcribe(payload: {
   // Convert ArrayBuffer to Float32Array
   const audioFloat32 = new Float32Array(audioData);
 
-  // Compute RMS audio volume energy to detect silence / low-energy static
-  const rms = calculateAudioRMS(audioFloat32);
-  if (rms < 0.003) {
-    console.log(`[AheadSub Worker] Low energy/silence detected (RMS: ${rms.toFixed(5)}), skipping chunk ${chunkIndex}`);
+  // Peak amplitude check
+  let maxVal = 0;
+  for (let k = 0; k < audioFloat32.length; k++) {
+    const abs = Math.abs(audioFloat32[k]!);
+    if (abs > maxVal) maxVal = abs;
+  }
+
+  // Only skip true digital silence (no audio data at all)
+  if (maxVal < 0.00005) {
     self.postMessage({
       type: 'transcription_result',
       payload: {
@@ -222,6 +227,14 @@ async function transcribe(payload: {
       },
     });
     return;
+  }
+
+  // Automatically boost quiet movie dialogue to clear speech level (0.85 peak) so Whisper hears all dialogue
+  if (maxVal > 0 && maxVal < 0.5) {
+    const boost = Math.min(0.85 / maxVal, 25.0);
+    for (let k = 0; k < audioFloat32.length; k++) {
+      audioFloat32[k] *= boost;
+    }
   }
 
   // Map 2-letter ISO codes to Transformers.js / Whisper language names
@@ -252,21 +265,23 @@ async function transcribe(payload: {
   const rawLang = (language && language !== 'auto') ? language.toLowerCase() : undefined;
   const explicitLang = rawLang ? (WHISPER_LANG_NAMES[rawLang] || rawLang) : undefined;
 
-  // Run transcription with native segment timestamps
+  // Run transcription with fast greedy decoding and optimal token limits
+  const chunkSeconds = Math.min(30, Math.max(5, Math.ceil(audioFloat32.length / 16000)));
   const options: any = {
     return_timestamps: true,
+    chunk_length_s: chunkSeconds,
     temperature: 0.0,
     task: 'transcribe',
     condition_on_previous_text: false,
-    no_speech_threshold: 0.6,
+    generate_kwargs: {
+      task: 'transcribe',
+      max_new_tokens: 64,
+    },
   };
 
   if (explicitLang) {
     options.language = explicitLang;
-    options.generate_kwargs = {
-      language: explicitLang,
-      task: 'transcribe',
-    };
+    options.generate_kwargs.language = explicitLang;
   }
 
   const result = await transcriber(audioFloat32, options);

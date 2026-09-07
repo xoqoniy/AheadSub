@@ -320,6 +320,10 @@ async function handleMessage(
           
           // Clear Transformers.js Cache API
           caches.delete('transformers-cache');
+
+          // Clear translation cache
+          translationCache.clear();
+          chrome.storage.local.remove(['aheadsub_trans_cache']).catch(() => {});
           
           // Also forward to offscreen just in case it holds memory or its own db handles
           chrome.runtime.sendMessage({ type: 'OFFSCREEN_CLEAR_CACHE' }).catch(() => {});
@@ -972,8 +976,8 @@ function persistTranslation(key: string, item: TranslationCacheItem): void {
 // In-flight translation request deduplication map
 const inFlightTranslations = new Map<string, Promise<TranslationCacheItem>>();
 
-// Staggered parallel translation fetcher: races multiple Google Translate mirrors with Promise.any
-async function fetchFastTranslation(urls: string[], timeoutMs: number = 3200): Promise<any> {
+// Instant parallel translation fetcher: races multiple Google Translate mirrors concurrently with Promise.any
+async function fetchFastTranslation(urls: string[], timeoutMs: number = 1800): Promise<any> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -1003,28 +1007,20 @@ async function fetchFastTranslation(urls: string[], timeoutMs: number = 3200): P
     }
   };
 
+  // Launch primary and secondary mirrors immediately in parallel
   const promises: Promise<any>[] = [tryFetch(urls[0])];
-
-  // Stagger second endpoint by 200ms
   if (urls.length > 1) {
-    promises.push(
-      new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (controller.signal.aborted) return reject(new Error('Aborted'));
-          tryFetch(urls[1]).then(resolve, reject);
-        }, 200);
-      })
-    );
+    promises.push(tryFetch(urls[1]));
   }
 
-  // Stagger third endpoint by 450ms
+  // Stagger third fallback endpoint by 150ms
   if (urls.length > 2) {
     promises.push(
       new Promise((resolve, reject) => {
         setTimeout(() => {
           if (controller.signal.aborted) return reject(new Error('Aborted'));
           tryFetch(urls[2]).then(resolve, reject);
-        }, 450);
+        }, 150);
       })
     );
   }
