@@ -12,6 +12,7 @@ import {
   cleanToken,
   type DetectedPhrase,
 } from '../core/collocations';
+import { isNoiseOrBlankText } from '../core/transcription/noise-filter';
 
 export class SubtitleOverlay {
   private container: HTMLDivElement | null = null;
@@ -100,7 +101,8 @@ export class SubtitleOverlay {
   }
 
   setCues(cues: SubtitleCue[]): void {
-    this.cues = cues.sort((a, b) => a.startTime - b.startTime);
+    const validCues = cues.filter((c) => c.text && !isNoiseOrBlankText(c.text));
+    this.cues = validCues.sort((a, b) => a.startTime - b.startTime);
     this.updateBadge();
     const targetLang = this.settings.hoverTranslationLanguage || 'uz';
     const currentT = this.video?.currentTime || 0;
@@ -108,8 +110,9 @@ export class SubtitleOverlay {
   }
 
   addCues(newCues: SubtitleCue[]): void {
+    const validNew = newCues.filter((c) => c.text && !isNoiseOrBlankText(c.text));
     const existingIds = new Set(this.cues.map((c) => c.id));
-    const uniqueNew = newCues.filter((c) => !existingIds.has(c.id));
+    const uniqueNew = validNew.filter((c) => !existingIds.has(c.id));
     const combined = [...this.cues, ...uniqueNew].sort((a, b) => a.startTime - b.startTime);
 
     const deduplicated: SubtitleCue[] = [];

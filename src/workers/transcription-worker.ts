@@ -1,10 +1,15 @@
+// @ts-nocheck — Worker context, Transformers.js dynamic imports
 // ============================================================
 // AheadSub — Transcription Worker
 // Runs Whisper inference via Transformers.js in a dedicated
 // Web Worker. Supports WebGPU and WASM backends.
 // ============================================================
 
-// @ts-nocheck — Worker context, Transformers.js dynamic imports
+import {
+  stripNoiseAnnotations,
+  isNoiseOrBlankText,
+  calculateAudioRMS,
+} from '../core/transcription/noise-filter';
 
 let pipeline: any = null;
 let transcriber: any = null;
@@ -202,6 +207,23 @@ async function transcribe(payload: {
   // Convert ArrayBuffer to Float32Array
   const audioFloat32 = new Float32Array(audioData);
 
+  // Compute RMS audio volume energy to detect silence / low-energy static
+  const rms = calculateAudioRMS(audioFloat32);
+  if (rms < 0.003) {
+    console.log(`[AheadSub Worker] Low energy/silence detected (RMS: ${rms.toFixed(5)}), skipping chunk ${chunkIndex}`);
+    self.postMessage({
+      type: 'transcription_result',
+      payload: {
+        chunkIndex,
+        chunkStartTime,
+        cues: [],
+        detectedLanguage: null,
+        processingTimeMs: performance.now() - startTime,
+      },
+    });
+    return;
+  }
+
   // Map 2-letter ISO codes to Transformers.js / Whisper language names
   const WHISPER_LANG_NAMES: Record<string, string> = {
     en: 'english',
@@ -236,6 +258,7 @@ async function transcribe(payload: {
     temperature: 0.0,
     task: 'transcribe',
     condition_on_previous_text: false,
+    no_speech_threshold: 0.6,
   };
 
   if (explicitLang) {
@@ -270,31 +293,6 @@ async function transcribe(payload: {
 interface WhisperChunk {
   text: string;
   timestamp: [number, number] | null;
-}
-
-function stripNoiseAnnotations(text: string): string {
-  if (!text) return '';
-  let clean = text.replace(/[\(\[\{]\s*(BLANK_AUDIO|MUSIC|SILENCE|NOISE|LAUGHTER|APPLAUSE|SOBBING|COUGHING|SOUND|TAG|UNK|SPEAKING_FOREIGN)\s*[\)\]\}]/gi, '');
-  return clean.replace(/\s+/g, ' ').trim();
-}
-
-const NOISE_WORDS = new Set([
-  'blank_audio', 'music', 'silence', 'noise', 'laughter', 'applause',
-  'sobbing', 'coughing', 'sound', 'tag', 'unk', 'speaking_foreign',
-  'voice', 'voices', 'laughs', 'laugh', 'gasp', 'sigh', 'sighs', 'screaming',
-  'crying', 'cough', 'groan', 'cheering', 'whispering', 'chuckle'
-]);
-
-function isNoiseOrBlankText(text: string): boolean {
-  if (!text || !text.trim()) return true;
-  const clean = stripNoiseAnnotations(text);
-  if (clean.length === 0) return true;
-
-  const lower = clean.toLowerCase().replace(/^[^a-z]+|[^a-z]+$/gi, '');
-  if (lower && NOISE_WORDS.has(lower) && clean.length <= lower.length + 4) {
-    return true;
-  }
-  return false;
 }
 
 function buildCuesFromWhisperOutput(
