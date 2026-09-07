@@ -17,6 +17,34 @@ import { PipelineState, ProcessingMode, AudioAccessMethod } from '../core/types'
 import { DEFAULT_SETTINGS, OFFSCREEN_DOCUMENT_PATH } from '../core/constants';
 import { RUSSIAN_COLLOCATIONS, INSTANT_UZBEK_WORDS } from '../core/collocations';
 
+// Enable declarativeNetRequest rules to remove Extension Referer/Origin on HLS/DASH media segment requests
+if (typeof chrome !== 'undefined' && chrome.declarativeNetRequest) {
+  chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [8881],
+    addRules: [
+      {
+        id: 8881,
+        priority: 1,
+        action: {
+          type: chrome.declarativeNetRequest.RuleActionType.MODIFY_HEADERS,
+          requestHeaders: [
+            { header: 'origin', operation: chrome.declarativeNetRequest.HeaderOperation.REMOVE },
+            { header: 'referer', operation: chrome.declarativeNetRequest.HeaderOperation.REMOVE },
+          ],
+        },
+        condition: {
+          urlFilter: '*',
+          resourceTypes: [
+            chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST,
+            chrome.declarativeNetRequest.ResourceType.MEDIA,
+            chrome.declarativeNetRequest.ResourceType.OTHER,
+          ],
+        },
+      },
+    ],
+  }).catch(() => {});
+}
+
 // --- State ---
 
 interface TabSession {

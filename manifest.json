@@ -10,7 +10,8 @@
     "offscreen",
     "tabCapture",
     "webNavigation",
-    "webRequest"
+    "webRequest",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "<all_urls>"

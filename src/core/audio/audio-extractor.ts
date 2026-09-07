@@ -123,17 +123,29 @@ export class AudioExtractor {
       }
     }
 
+    let consecutiveFailures = 0;
+
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i]!;
       onProgress?.(i, segments.length, manifestTotalDuration);
 
       try {
-        const response = await fetch(segment.url);
-        if (!response.ok) {
-          console.warn(`[AheadSub] Segment ${i} fetch failed: ${response.status}`);
+        let response: Response | null = null;
+        try {
+          response = await fetch(segment.url, { referrerPolicy: 'no-referrer' });
+        } catch {
+          response = await fetch(segment.url);
+        }
+
+        if (!response || !response.ok) {
+          consecutiveFailures++;
+          if (consecutiveFailures >= 5) {
+            throw new Error(`HLS segment fetch failed (${response?.status || 403}). Switching to live tab capture.`);
+          }
           continue;
         }
 
+        consecutiveFailures = 0;
         let rawBytes = new Uint8Array(await response.arrayBuffer());
 
         // Decrypt AES-128 if encrypted
